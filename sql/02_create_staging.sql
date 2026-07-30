@@ -41,7 +41,7 @@ CREATE TABLE staging.products (
 
 CREATE TABLE staging.payments (
     order_id TEXT,
-    payment_sequencial INTEGER,
+    payment_sequential INTEGER,
     payment_type TEXT,
     payment_installments INTEGER,
     payment_value NUMERIC(10,2)

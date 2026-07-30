@@ -1,7 +1,7 @@
 from ecommerce_data_warehouse.datasets import DATASETS
 from ecommerce_data_warehouse.pipeline import execute_pipeline
 from ecommerce_data_warehouse.logging_config import configure_logging
-from ecommerce_data_warehouse.types import PipelineRespose
+from ecommerce_data_warehouse.types import PipelineResponse, PipelineStatus
 import logging
 
 configure_logging()
@@ -22,7 +22,7 @@ def main():
                 rows,
             )
             results.append(
-                PipelineRespose(
+                PipelineResponse(
                     table=table,
                     status='SUCCESS',
                     rows=rows,
@@ -34,21 +34,27 @@ def main():
                 table,
             )
             results.append(
-                PipelineRespose(
+                PipelineResponse(
                     table=table,
                     status='FAILED',
                     rows=rows,
                 )
             )
-
-    logger.info("\nPipeline finished successfully.")
+    failed = any(
+        r.status == PipelineStatus.FAILED
+        for r in results
+    )
+    if failed:
+        logger.warning(f'Pipeline finished with failures.')
+    else:
+        logger.info('Pipeline finished successfully.')
     logger.info('Execution summary:')
     for r in results:
         logger.info(
             "'%-15s %-8s %d rows",
-            r['table'],
-            r['status'],
-            r['rows'],
+            r.table,
+            r.status,
+            r.rows,
         )
 
 if __name__ == "__main__":

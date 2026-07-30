@@ -6,7 +6,7 @@ class PipelineStatus(Enum):
     FAILED = 'FAILED'
 
 @dataclass(slots=True)
-class PipelineRespose:
+class PipelineResponse:
     table: str
     status: PipelineStatus
     rows: int
