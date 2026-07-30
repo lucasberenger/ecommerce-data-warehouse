@@ -7,7 +7,12 @@ authors = [
     { name = "lucasberenger", email = "thegreatberenger@gmail.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "pandas>=3.0.5",
+    "psycopg2-binary>=2.9.12",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0.51",
+]
 
 [project.scripts]
 ecommerce-data-warehouse = "ecommerce_data_warehouse:main"
