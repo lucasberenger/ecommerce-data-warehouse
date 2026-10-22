@@ -8,7 +8,7 @@ configure_logging()
 
 logger = logging.getLogger(__name__)
 
-def main():
+def main() -> int:
     logger.info("Starting ingestion pipeline...\n")
 
     results = []
@@ -24,7 +24,7 @@ def main():
             results.append(
                 PipelineResponse(
                     table=table,
-                    status='SUCCESS',
+                    status=PipelineStatus.SUCCESS,
                     rows=rows,
                 )
             )
@@ -36,8 +36,8 @@ def main():
             results.append(
                 PipelineResponse(
                     table=table,
-                    status='FAILED',
-                    rows=rows,
+                    status=PipelineStatus.FAILED,
+                    rows=0,
                 )
             )
     failed = any(
@@ -45,19 +45,21 @@ def main():
         for r in results
     )
     if failed:
-        logger.warning(f'Pipeline finished with failures.')
+        logger.warning('Pipeline finished with failures.')
     else:
         logger.info('Pipeline finished successfully.')
     logger.info('Execution summary:')
     for r in results:
         logger.info(
-            "'%-15s %-8s %d rows",
+            "%-15s %-8s %d rows",
             r.table,
-            r.status,
+            r.status.value,
             r.rows,
         )
 
+    return 1 if failed else 0
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
 
 
