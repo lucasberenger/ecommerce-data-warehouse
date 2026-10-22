@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ecommerce-data-warehouse = "ecommerce_data_warehouse:main"
+ecommerce-data-warehouse = "ecommerce_data_warehouse.main:main"
 
 [build-system]
 requires = ["uv_build>=0.12.0,<0.13.0"]
