@@ -1,16 +1,17 @@
 import pandas as pd
-from ecommerce_data_warehouse.database import engine
 from sqlalchemy import text
+from sqlalchemy.engine import Connection
 
-def truncate_table(table_name, schema='staging'):
-    with engine.begin() as conn:
-        conn.execute(
-            text(f'TRUNCATE TABLE {schema}.{table_name};')
-        )
-        
+def truncate_table(table_name: str, connection: Connection, schema: str = 'staging'):
+    # Names come from the internal dataset catalog.
+    preparer = connection.dialect.identifier_preparer
+    qualified_name = f'{preparer.quote_schema(schema)}.{preparer.quote(table_name)}'
+    connection.execute(text(f'TRUNCATE TABLE {qualified_name};'))
+
 def load_dataframe(
         df: pd.DataFrame,
         table_name: str,
+        connection: Connection,
         schema: str = "staging",
 ) -> int:
     if df is None:
@@ -20,7 +21,7 @@ def load_dataframe(
 
     df.to_sql(
         name=table_name,
-        con=engine,
+        con=connection,
         schema=schema,
         if_exists="append",
         index=False,
