@@ -1,10 +1,10 @@
--- customers: check for null customers ids
+-- check: customers_null_id
 SELECT 
     *
 FROM staging.customers AS c
 WHERE c.customer_id IS NULL;
 
--- customers: check for duplicated customers ids
+-- check: customers_duplicate_id
 SELECT
     c.customer_id,
     COUNT(*) AS quantity
@@ -13,12 +13,12 @@ GROUP BY
     c.customer_id
 HAVING COUNT(*) > 1;
 
--- orders: check for null orders ids
+-- check: orders_null_id
 SELECT *
 FROM staging.orders AS o
 WHERE o.order_id IS NULL;
 
--- orders: check for duplicated orders ids
+-- check: orders_duplicate_id
 SELECT 
     o.order_id,
     COUNT(*) AS quantity
@@ -26,12 +26,12 @@ FROM staging.orders AS o
 GROUP BY o.order_id
 HAVING COUNT(*) > 1;
 
--- products: check for null products ids
+-- check: products_null_id
 SELECT *
 FROM staging.products AS p
 WHERE p.product_id IS NULL;
 
--- products: check for duplicated products ids
+-- check: products_duplicate_id
 SELECT 
     p.product_id,
     COUNT(*) AS quantity
@@ -39,12 +39,12 @@ FROM staging.products AS p
 GROUP BY p.product_id
 HAVING COUNT(*) > 1;
 
--- order items: check for null ids 
+-- check: order_items_null_key
 SELECT *
 FROM staging.order_items AS o
 WHERE o.order_id IS NULL OR o.order_item_id IS NULL; 
 
--- order items: check for duplicated ids
+-- check: order_items_duplicate_key
 SELECT 
     o.order_item_id AS item_id,
     o.order_id,
@@ -55,12 +55,12 @@ GROUP BY
     o.order_id
 HAVING COUNT(*) > 1;
 
--- payments: check for null ids
+-- check: payments_null_key
 SELECT *
 FROM staging.payments AS p
 WHERE p.order_id IS NULL OR p.payment_sequential IS NULL;
 
--- payments: check for duplicated payment keys
+-- check: payments_duplicate_key
 SELECT
     p.order_id,
     p.payment_sequential,

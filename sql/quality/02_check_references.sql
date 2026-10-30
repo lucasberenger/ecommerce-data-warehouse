@@ -1,5 +1,5 @@
--- check any orphan reference
 
+-- check: orders_missing_customer
 SELECT 
     o.customer_id AS order_customer_id,
     c.customer_id AS customer_customer_id,
@@ -10,6 +10,7 @@ LEFT JOIN staging.customers AS c
 WHERE c.customer_id IS NULL
 ORDER BY o.customer_id;
 
+-- check: order_items_missing_order
 SELECT
     oi.order_id AS order_items_order_id,
     o.order_id AS orders_order_id,
@@ -20,6 +21,7 @@ LEFT JOIN staging.orders AS o
 WHERE o.order_id IS NULL
 ORDER BY oi.order_id;
 
+-- check: order_items_missing_product
 SELECT
     oi.product_id AS order_items_product_id,
     p.product_id AS products_product_id,
@@ -30,6 +32,7 @@ LEFT JOIN staging.products AS p
 WHERE p.product_id IS NULL
 ORDER BY oi.order_id;
 
+-- check: payments_missing_order
 SELECT
     p.order_id AS payments_order_id,
     o.order_id AS order_id,
