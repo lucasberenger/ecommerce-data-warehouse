@@ -23,15 +23,20 @@ class TransactionEngine:
         self.state = deepcopy(state)
         self.begins = 0
         self.fail_commit = False
+        self.active = False
 
     @contextmanager
     def begin(self):
         self.begins += 1
         pending = deepcopy(self.state)
-        yield pending
-        if self.fail_commit:
-            raise RuntimeError('commit failed')
-        self.state = pending
+        self.active = True
+        try:
+            yield pending
+            if self.fail_commit:
+                raise RuntimeError('commit failed')
+            self.state = pending
+        finally:
+            self.active = False
 
 
 def isolated_module(filename, dependencies):
@@ -66,6 +71,21 @@ class PipelineTests(unittest.TestCase):
                 raise RuntimeError('insert failed')
             return len(df)
 
+        self.checks = [('keys_check', 'SELECT 1 WHERE 1 = 0'),
+                       ('references_check', 'SELECT 2 WHERE 1 = 0')]
+
+        def read_checks(path):
+            self.assertFalse(self.engine.active)
+            index = 0 if path.name == '01_check_keys.sql' else 1
+            return [self.checks[index]]
+
+        def validate_query(connection, query, check_name):
+            self.assertEqual(connection, {
+                **{d['table']: list(self.frames[d['file']]) for d in DATASETS.values()},
+                'analytics.dim_customers': ['untouched'],
+            })
+            self.events.append(('check', check_name, connection))
+
         dependencies = {}
         for name, attributes in {
             'database': {'engine': self.engine},
@@ -73,6 +93,8 @@ class PipelineTests(unittest.TestCase):
             'load': {'truncate_table': Mock(side_effect=truncate), 'load_dataframe': Mock(side_effect=load)},
             'transform': {'transform_dataframe': Mock(side_effect=lambda df, table: df)},
             'validation': {'validate_dataframe': Mock()},
+            'quality': {'read_checks': Mock(side_effect=read_checks),
+                        'validate_query': Mock(side_effect=validate_query)},
         }.items():
             module = types.ModuleType('ecommerce_data_warehouse.' + name)
             module.__dict__.update(attributes)
@@ -96,9 +118,44 @@ class PipelineTests(unittest.TestCase):
     def test_all_operations_share_one_connection(self):
         self.run_pipeline()
         self.assertEqual(self.engine.begins, 1)
-        self.assertEqual([e[0] for e in self.events], ['truncate'] * 5 + ['load'] * 5)
+        self.assertEqual([e[0] for e in self.events],
+                         ['truncate'] * 5 + ['load'] * 5 + ['check'] * 2)
         connection = self.events[0][2]
         self.assertTrue(all(event[2] is connection for event in self.events))
+
+    def test_reads_both_files_and_executes_every_check_in_order(self):
+        self.run_pipeline()
+        paths = [call.args[0] for call in self.pipeline.read_checks.call_args_list]
+        self.assertEqual(paths, [self.pipeline.QUALITY_DIR / '01_check_keys.sql',
+                                 self.pipeline.QUALITY_DIR / '02_check_references.sql'])
+        calls = self.pipeline.validate_query.call_args_list
+        self.assertEqual([(call.kwargs['check_name'], call.kwargs['query']) for call in calls],
+                         self.checks)
+
+    def test_invalid_or_missing_sql_file_prevents_transaction(self):
+        for error in [ValueError('invalid SQL file'), FileNotFoundError('missing SQL file')]:
+            with self.subTest(error=error):
+                self.pipeline.read_checks.side_effect = error
+                with self.assertRaises(type(error)):
+                    self.run_pipeline()
+                self.assertEqual(self.engine.begins, 0)
+                self.assertEqual(self.engine.state, self.initial)
+
+    def test_duplicate_names_across_files_prevent_transaction(self):
+        self.pipeline.read_checks.side_effect = [[self.checks[0]], [self.checks[0]]]
+        with self.assertRaisesRegex(ValueError, 'Duplicated check name'):
+            self.run_pipeline()
+        self.assertEqual(self.engine.begins, 0)
+
+    def test_quality_violation_or_sql_error_rolls_back_and_stops(self):
+        for error in [ValueError('keys_check failed'), RuntimeError('SQL execution failed')]:
+            with self.subTest(error=error):
+                self.pipeline.validate_query.reset_mock()
+                self.pipeline.validate_query.side_effect = error
+                with self.assertRaises(type(error)):
+                    self.run_pipeline()
+                self.assertEqual(self.engine.state, self.initial)
+                self.pipeline.validate_query.assert_called_once()
 
     def test_middle_failure_preserves_previous_load_and_stops(self):
         self.failure_table = 'order_items'
